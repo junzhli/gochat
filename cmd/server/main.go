@@ -1,10 +1,10 @@
 package main
 
 import (
-	"chat-backend-server/internal/protocol"
-	"chat-backend-server/internal/stream"
 	"flag"
 	"fmt"
+	"gochat-system/internal/protocol"
+	"gochat-system/internal/stream"
 	"io"
 	"log"
 	"net"

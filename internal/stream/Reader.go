@@ -2,7 +2,7 @@ package stream
 
 import (
 	"bufio"
-	"chat-backend-server/internal/protocol"
+	"gochat-system/internal/protocol"
 	"io"
 	"log"
 	"net/url"
