@@ -3,6 +3,8 @@ package main
 import (
 	"chat-backend-server/internal/protocol"
 	"chat-backend-server/internal/stream"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -144,9 +146,18 @@ func (s *TcpChatServer) Broadcast(command interface{}) {
 }
 
 func main() {
-	var s ChatServer
-	s = NewServer()
-	s.Listen(":3333")
+	ip := flag.String("ip", "", "Specify a network interface address to start listening")
+	port := flag.String("port", "3333", "Specify a listening port")
+	flag.Parse()
+
+	fmt.Print("Chat console (Server)\n")
+	fmt.Print("===============\n")
+
+	s := NewServer()
+	err := s.Listen(fmt.Sprintf("%v:%v", *ip, *port))
+	if err != nil {
+		log.Fatalf("Unable to listen on %v:%v: %v", *ip, *port, err)
+	}
 
 	s.Start()
 }

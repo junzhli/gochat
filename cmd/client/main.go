@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"chat-backend-server/internal/protocol"
 	"chat-backend-server/internal/stream"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -112,12 +113,16 @@ func listenOnIncomingMessages(c ChatClient) {
 }
 
 func main() {
-	fmt.Print("Shell here!\n")
+	ip := flag.String("ip", "localhost", "Specify a remote address to connect")
+	port := flag.String("port", "3333", "Specify a remote port")
+	flag.Parse()
+
+	fmt.Print("Chat console (Client)\n")
 	fmt.Print("===============\n")
 
 	c := NewClient()
-	fmt.Printf("Connecting to server...")
-	if err := c.Dial("127.0.0.1:3333"); err != nil {
+	fmt.Printf("Connecting to server %v:%v...", *ip, *port)
+	if err := c.Dial(fmt.Sprintf("%v:%v", *ip, *port)); err != nil {
 		fmt.Printf("fail\n")
 		os.Exit(1)
 	}
