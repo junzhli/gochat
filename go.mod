@@ -1,3 +1,3 @@
-module chat-backend-server
+module gochat-system
 
 go 1.14

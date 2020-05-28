@@ -2,28 +2,37 @@ package main
 
 import (
 	"bufio"
-	"chat-backend-server/internal/protocol"
-	"chat-backend-server/internal/stream"
 	"flag"
 	"fmt"
+	"gochat-system/internal/protocol"
+	"gochat-system/internal/stream"
 	"io"
 	"log"
 	"net"
 	"os"
 )
 
+// ChatClient provides client program with clear explanation of interfaces
 type ChatClient interface {
+	// Dial is called to reach server
 	Dial(address string) error
+	// Send command to online users
 	Send(command interface{}) error
+	// SendMessage is a wrapper function that send text messages to chat room with Send method
 	SendMessage(message string) error
+	// GetName returns client's nickname
 	GetName() string
+	// SetName is a wrapper function that register its nickname to chat room with Send method
 	SetName(name string) error
+	// Start method listens on tcp connection
 	Start()
+	// Close method terminates its tcp connection
 	Close()
+	// Incoming returns channel that receives commands/notifications from server
 	Incoming() chan interface{}
 }
 
-type TcpChatClient struct {
+type tcpChatClient struct {
 	conn      net.Conn
 	cmdReader *stream.CommandReader
 	cmdWriter *stream.CommandWriter
@@ -31,13 +40,14 @@ type TcpChatClient struct {
 	incoming  chan interface{}
 }
 
+// NewClient creates an instance of ChatClient
 func NewClient() ChatClient {
-	return &TcpChatClient{
+	return &tcpChatClient{
 		incoming: make(chan interface{}),
 	}
 }
 
-func (c *TcpChatClient) Dial(address string) error {
+func (c *tcpChatClient) Dial(address string) error {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return err
@@ -49,28 +59,28 @@ func (c *TcpChatClient) Dial(address string) error {
 	return nil
 }
 
-func (c *TcpChatClient) Send(command interface{}) error {
+func (c *tcpChatClient) Send(command interface{}) error {
 	return c.cmdWriter.Write(command)
 }
 
-func (c *TcpChatClient) SendMessage(message string) error {
+func (c *tcpChatClient) SendMessage(message string) error {
 	return c.Send(protocol.SendCommand{
 		Message: message,
 	})
 }
 
-func (c *TcpChatClient) GetName() string {
+func (c *tcpChatClient) GetName() string {
 	return c.name
 }
 
-func (c *TcpChatClient) SetName(name string) error {
+func (c *tcpChatClient) SetName(name string) error {
 	c.name = name
 	return c.Send(protocol.NameCommand{
 		Name: name,
 	})
 }
 
-func (c *TcpChatClient) Start() {
+func (c *tcpChatClient) Start() {
 	for {
 		cmd, err := c.cmdReader.Read()
 		if err == io.EOF {
@@ -86,11 +96,14 @@ func (c *TcpChatClient) Start() {
 	}
 }
 
-func (c *TcpChatClient) Close() {
-	c.conn.Close()
+func (c *tcpChatClient) Close() {
+	err := c.conn.Close()
+	if err != nil {
+		fmt.Printf("Connection terminated with error occurred: %v", err)
+	}
 }
 
-func (c *TcpChatClient) Incoming() chan interface{} {
+func (c *tcpChatClient) Incoming() chan interface{} {
 	return c.incoming
 }
 
@@ -138,7 +151,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read name error occurred: %v", err)
 	}
-	c.SetName(text[:len(text)-1])
+	err = c.SetName(text[:len(text)-1])
+	if err != nil {
+		fmt.Printf("Unable to set name. Reason: %v", err)
+	}
 
 	fmt.Printf("Wellcome %v\n", text)
 	go listenOnIncomingMessages(c)
@@ -148,6 +164,9 @@ func main() {
 		if err != nil {
 			log.Fatalf("Unable to read message from input: %v", err)
 		}
-		c.SendMessage(string(textBytes))
+		err = c.SendMessage(string(textBytes))
+		if err != nil {
+			fmt.Printf("Unable to send message. Reason: %v", err)
+		}
 	}
 }

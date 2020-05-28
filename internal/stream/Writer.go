@@ -1,8 +1,8 @@
 package stream
 
 import (
-	"chat-backend-server/internal/protocol"
 	"fmt"
+	"gochat-system/internal/protocol"
 	"io"
 	"net/url"
 )

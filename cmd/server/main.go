@@ -1,20 +1,25 @@
 package main
 
 import (
-	"chat-backend-server/internal/protocol"
-	"chat-backend-server/internal/stream"
 	"flag"
 	"fmt"
+	"gochat-system/internal/protocol"
+	"gochat-system/internal/stream"
 	"io"
 	"log"
 	"net"
 	"sync"
 )
 
+// ChatServer provides server program with clear explanation of interfaces
 type ChatServer interface {
+	// Listen method starts to listen on specific network interface with specific port
 	Listen(address string) error
+	// Broadcast method broadcasts messages to clients
 	Broadcast(command interface{})
+	// Start method serves incoming connections from new client
 	Start()
+	// Close method gracefully terminates itself
 	Close()
 }
 
@@ -24,21 +29,22 @@ type client struct {
 	writer *stream.CommandWriter
 }
 
-type TcpChatServer struct {
+type tcpChatServer struct {
 	listener net.Listener
 	clients  []*client
 	mutex    *sync.Mutex
 }
 
+// NewServer creates an instance of ChatServer
 func NewServer() ChatServer {
-	return &TcpChatServer{
+	return &tcpChatServer{
 		listener: nil,
 		clients:  make([]*client, 0),
 		mutex:    &sync.Mutex{},
 	}
 }
 
-func (s *TcpChatServer) Listen(address string) error {
+func (s *tcpChatServer) Listen(address string) error {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -49,11 +55,14 @@ func (s *TcpChatServer) Listen(address string) error {
 	return nil
 }
 
-func (s *TcpChatServer) Close() {
-	s.listener.Close()
+func (s *tcpChatServer) Close() {
+	err := s.listener.Close()
+	if err != nil {
+		log.Printf("Server shuting down with error occurred: %v", err)
+	}
 }
 
-func (s *TcpChatServer) Start() {
+func (s *tcpChatServer) Start() {
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -65,7 +74,7 @@ func (s *TcpChatServer) Start() {
 	}
 }
 
-func (s *TcpChatServer) accept(conn net.Conn) *client {
+func (s *tcpChatServer) accept(conn net.Conn) *client {
 	log.Printf("Accepting connection from %v | total clients %v", conn.RemoteAddr().String(), len(s.clients)+1)
 
 	s.mutex.Lock()
@@ -85,7 +94,7 @@ func (s *TcpChatServer) accept(conn net.Conn) *client {
 	return client
 }
 
-func (s *TcpChatServer) remove(client *client) {
+func (s *tcpChatServer) remove(client *client) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -96,11 +105,14 @@ func (s *TcpChatServer) remove(client *client) {
 		}
 	}
 	log.Printf("Closing connection from %v", client.conn.RemoteAddr().String())
-	client.conn.Close()
+	err := client.conn.Close()
+	if err != nil {
+		log.Printf("Disconnecting connection from %v with error occurred: %v", client.conn.RemoteAddr().String(), err)
+	}
 }
 
 // serve method says hello to new client
-func (s *TcpChatServer) serve(client *client) {
+func (s *tcpChatServer) serve(client *client) {
 	cmdReader := stream.NewCommandReader(client.conn)
 	defer s.remove(client)
 
@@ -136,7 +148,7 @@ func (s *TcpChatServer) serve(client *client) {
 	}
 }
 
-func (s *TcpChatServer) Broadcast(command interface{}) {
+func (s *tcpChatServer) Broadcast(command interface{}) {
 	for _, client := range s.clients {
 		err := client.writer.Write(command)
 		if err != nil {
